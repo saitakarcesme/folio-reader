@@ -172,6 +172,10 @@ export function ReaderClient({ id }: { id: string }) {
     const state = gesture.current; clearTimeout(state.longTimer); state.pointers.delete(event.pointerId);
     if (state.pointers.size > 0) return;
     const now = performance.now();
+    if (event.pointerType === "mouse") {
+      state.maxPointers = 0;
+      return;
+    }
     if (!state.moved && now - state.startedAt < 360) {
       if (state.maxPointers >= 2) triggerGestureControls();
       else if (now - state.lastTapAt < 420 && Math.hypot(event.clientX - state.lastTapX, event.clientY - state.lastTapY) < 48) { triggerGestureControls(); state.lastTapAt = 0; }
