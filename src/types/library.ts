@@ -1,4 +1,4 @@
-export type ReaderMode = "continuous" | "paged" | "horizontal";
+export type ReaderMode = "article" | "continuous" | "paged" | "horizontal";
 export type ReaderTheme = "system" | "light" | "sepia" | "dark";
 
 export interface DocumentMetadata {
@@ -17,6 +17,7 @@ export interface DocumentMetadata {
   readerMode: ReaderMode;
   readerTheme: ReaderTheme;
   brightness: number;
+  articleFontSize: number;
   coverBlob: Blob;
 }
 
@@ -38,5 +39,6 @@ export type DocumentUpdate = Partial<
     | "readerMode"
     | "readerTheme"
     | "brightness"
+    | "articleFontSize"
   >
 >;

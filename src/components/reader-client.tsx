@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import { ArticlePage } from "@/components/article-page";
 import { Icon } from "@/components/icons";
 import { PdfPage } from "@/components/pdf-page";
 import { libraryRepository } from "@/lib/indexeddb-library";
@@ -17,9 +18,12 @@ const themes: { value: ReaderTheme; label: string }[] = [
 ];
 
 const modes: { value: ReaderMode; label: string }[] = [
-  { value: "continuous", label: "Scroll" }, { value: "paged", label: "Paged" },
+  { value: "article", label: "Article" }, { value: "continuous", label: "PDF" },
+  { value: "paged", label: "Paged" },
   { value: "horizontal", label: "Horizontal" },
 ];
+
+const isVerticalMode = (mode: ReaderMode) => mode === "article" || mode === "continuous";
 
 export function ReaderClient({ id }: { id: string }) {
   const router = useRouter();
@@ -78,7 +82,12 @@ export function ReaderClient({ id }: { id: string }) {
         if (!storedMetadata || !file) throw new Error("This document is no longer in your library.");
         loadedPdf = await openPdf(file);
         if (disposed) { await loadedPdf.cleanup(); return; }
-        const opened = await libraryRepository.update(id, { lastOpenedAt: Date.now() });
+        const isLegacyDocument = typeof storedMetadata.articleFontSize !== "number";
+        const opened = await libraryRepository.update(id, {
+          lastOpenedAt: Date.now(),
+          readerMode: isLegacyDocument ? "article" : storedMetadata.readerMode,
+          articleFontSize: storedMetadata.articleFontSize ?? 19,
+        });
         setMetadata(opened); setPdf(loadedPdf);
       } catch (error) { if (!disposed) setLoadError((error as Error).message || "The PDF could not be opened."); }
       finally { if (!disposed) setLoading(false); }
@@ -93,7 +102,7 @@ export function ReaderClient({ id }: { id: string }) {
       void libraryRepository.update(id, {
         currentPage: next.currentPage, pageOffset: next.pageOffset, progress: next.progress,
         bookmarks: next.bookmarks, readerMode: next.readerMode, readerTheme: next.readerTheme,
-        brightness: next.brightness, updatedAt: Date.now(),
+        brightness: next.brightness, articleFontSize: next.articleFontSize, updatedAt: Date.now(),
       });
     }, 500);
   }, [id]);
@@ -110,7 +119,7 @@ export function ReaderClient({ id }: { id: string }) {
     const viewport = viewportRef.current;
     const target = document.getElementById(`pdf-page-${page}`);
     if (!viewport || !target) return;
-    if (metadata?.readerMode === "continuous") {
+    if (metadata?.readerMode === "article" || metadata?.readerMode === "continuous") {
       viewport.scrollTo({ top: target.offsetTop, behavior: smooth ? "smooth" : "instant" });
     } else {
       viewport.scrollTo({ left: target.offsetLeft, behavior: smooth ? "smooth" : "instant" });
@@ -125,7 +134,7 @@ export function ReaderClient({ id }: { id: string }) {
       const viewport = viewportRef.current;
       const target = document.getElementById(`pdf-page-${metadata.currentPage}`);
       if (!viewport || !target) return;
-      if (metadata.readerMode === "continuous") viewport.scrollTop = target.offsetTop + target.clientHeight * metadata.pageOffset;
+      if (isVerticalMode(metadata.readerMode)) viewport.scrollTop = target.offsetTop + target.clientHeight * metadata.pageOffset;
       else viewport.scrollLeft = target.offsetLeft;
     }, 180);
     return () => window.clearTimeout(timer);
@@ -136,10 +145,10 @@ export function ReaderClient({ id }: { id: string }) {
     if (!viewport || !pdf || !metadata) return;
     const center = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)?.closest<HTMLElement>("[data-page]");
     let page = center ? Number(center.dataset.page) : metadata.currentPage;
-    if (metadata.readerMode !== "continuous") page = Math.round(viewport.scrollLeft / Math.max(1, viewport.clientWidth)) + 1;
+    if (!isVerticalMode(metadata.readerMode)) page = Math.round(viewport.scrollLeft / Math.max(1, viewport.clientWidth)) + 1;
     page = Math.min(pdf.numPages, Math.max(1, page));
     const element = document.getElementById(`pdf-page-${page}`);
-    const pageOffset = metadata.readerMode === "continuous" && element ? Math.min(1, Math.max(0, (viewport.scrollTop - element.offsetTop) / element.clientHeight)) : 0;
+    const pageOffset = isVerticalMode(metadata.readerMode) && element ? Math.min(1, Math.max(0, (viewport.scrollTop - element.offsetTop) / element.clientHeight)) : 0;
     const progress = pdf.numPages > 1 ? Math.min(1, Math.max(0, (page - 1 + pageOffset) / (pdf.numPages - 1))) : pageOffset;
     if (page !== metadata.currentPage || Math.abs(pageOffset - metadata.pageOffset) > 0.02) updateMetadata({ currentPage: page, pageOffset, progress });
   }, [metadata, pdf, updateMetadata]);
@@ -150,7 +159,7 @@ export function ReaderClient({ id }: { id: string }) {
   };
 
   useEffect(() => {
-    const flush = () => { if (metadata) void libraryRepository.update(id, { currentPage: metadata.currentPage, pageOffset: metadata.pageOffset, progress: metadata.progress, bookmarks: metadata.bookmarks, readerMode: metadata.readerMode, readerTheme: metadata.readerTheme, brightness: metadata.brightness, updatedAt: Date.now() }); };
+    const flush = () => { if (metadata) void libraryRepository.update(id, { currentPage: metadata.currentPage, pageOffset: metadata.pageOffset, progress: metadata.progress, bookmarks: metadata.bookmarks, readerMode: metadata.readerMode, readerTheme: metadata.readerTheme, brightness: metadata.brightness, articleFontSize: metadata.articleFontSize, updatedAt: Date.now() }); };
     window.addEventListener("pagehide", flush);
     return () => window.removeEventListener("pagehide", flush);
   }, [id, metadata]);
@@ -225,10 +234,12 @@ export function ReaderClient({ id }: { id: string }) {
   if (loadError || !metadata || !pdf) return <main className="reader-state"><Icon name="file" /><h1>Unable to open PDF</h1><p>{loadError}</p><button className="primary-button" onClick={() => router.replace("/")}>Back to Library</button></main>;
 
   return (
-    <main className={`reader-shell theme-${metadata.readerTheme} ${controlsVisible ? "controls-visible" : ""}`}>
+    <main className={`reader-shell theme-${metadata.readerTheme} ${metadata.readerMode === "article" ? "article-reader" : ""} ${controlsVisible ? "controls-visible" : ""}`}>
       <div ref={viewportRef} className={`reader-viewport mode-${metadata.readerMode}`} onScroll={onScroll} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onDoubleClick={(event) => { if (!(event.target as HTMLElement).closest("[data-reader-control]")) { event.preventDefault(); triggerGestureControls(); } }} onContextMenu={(event) => event.preventDefault()}>
-        <div className="page-list" style={{ "--reader-zoom": zoom } as React.CSSProperties}>
-          {pageNumbers.map((pageNumber) => <PdfPage key={pageNumber} document={pdf} pageNumber={pageNumber} mode={metadata.readerMode} zoom={zoom} brightness={metadata.brightness} theme={metadata.readerTheme} />)}
+        <div className="page-list" style={{ "--reader-zoom": zoom, "--article-font-size": `${metadata.articleFontSize}px`, filter: metadata.readerMode === "article" ? `brightness(${metadata.brightness})` : undefined } as React.CSSProperties}>
+          {metadata.readerMode === "article"
+            ? pageNumbers.map((pageNumber) => <ArticlePage key={pageNumber} document={pdf} pageNumber={pageNumber} documentTitle={metadata.name} />)
+            : pageNumbers.map((pageNumber) => <PdfPage key={pageNumber} document={pdf} pageNumber={pageNumber} mode={metadata.readerMode} zoom={zoom} brightness={metadata.brightness} theme={metadata.readerTheme} />)}
         </div>
       </div>
 
@@ -244,7 +255,7 @@ export function ReaderClient({ id }: { id: string }) {
       <footer className="reader-bottombar" data-reader-control aria-hidden={!controlsVisible} onPointerDown={revealControls}>
         <div className="page-scrubber"><span>{metadata.currentPage}</span><input aria-label="Page" type="range" min="1" max={metadata.pageCount} value={metadata.currentPage} onChange={(event) => jumpToPage(Number(event.target.value), false)} /><span>{metadata.pageCount}</span></div>
         <div className="reader-tools">
-          <button onClick={() => changeMode(metadata.readerMode === "continuous" ? "paged" : metadata.readerMode === "paged" ? "horizontal" : "continuous")} aria-label={`Reading mode: ${metadata.readerMode}`}><Icon name={metadata.readerMode === "horizontal" ? "horizontal" : "grid"} /><span>{modes.find((mode) => mode.value === metadata.readerMode)?.label}</span></button>
+          <button onClick={() => changeMode(metadata.readerMode === "article" ? "continuous" : "article")} aria-label={`Reading mode: ${metadata.readerMode}`}><Icon name={metadata.readerMode === "article" ? "article" : metadata.readerMode === "horizontal" ? "horizontal" : "grid"} /><span>{modes.find((mode) => mode.value === metadata.readerMode)?.label}</span></button>
           <button onClick={() => { setSettingsOpen((open) => !open); setSearchOpen(false); revealControls(); }} aria-label="Reading settings"><Icon name="settings" /><span>Display</span></button>
         </div>
       </footer>
@@ -253,8 +264,10 @@ export function ReaderClient({ id }: { id: string }) {
         <div className="panel-handle" /><div className="panel-heading"><strong>Display</strong><button onClick={() => setSettingsOpen(false)} aria-label="Close"><Icon name="x" /></button></div>
         <label className="brightness-control"><span><Icon name="sun" /> Brightness</span><input type="range" min="0.65" max="1.15" step="0.05" value={metadata.brightness} onChange={(event) => updateMetadata({ brightness: Number(event.target.value) })} /></label>
         <div className="setting-group"><span>Appearance</span><div className="segmented themes">{themes.map((theme) => <button key={theme.value} className={metadata.readerTheme === theme.value ? "selected" : ""} onClick={() => updateMetadata({ readerTheme: theme.value })}>{metadata.readerTheme === theme.value && <Icon name="check" />}{theme.label}</button>)}</div></div>
-        <div className="setting-group"><span>Reading direction</span><div className="segmented">{modes.map((mode) => <button key={mode.value} className={metadata.readerMode === mode.value ? "selected" : ""} onClick={() => changeMode(mode.value)}>{mode.label}</button>)}</div></div>
-        <div className="zoom-row"><span>Page size</span><div><button onClick={() => setZoom((value) => Math.max(.75, value - .15))} aria-label="Zoom out">−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((value) => Math.min(2.5, value + .15))} aria-label="Zoom in">+</button></div></div>
+        <div className="setting-group"><span>Reading mode</span><div className="segmented reading-modes">{modes.map((mode) => <button key={mode.value} className={metadata.readerMode === mode.value ? "selected" : ""} onClick={() => changeMode(mode.value)}>{mode.label}</button>)}</div></div>
+        {metadata.readerMode === "article"
+          ? <div className="zoom-row"><span>Text size</span><div><button onClick={() => updateMetadata({ articleFontSize: Math.max(16, metadata.articleFontSize - 1) })} aria-label="Decrease text size">A−</button><span>{metadata.articleFontSize}px</span><button onClick={() => updateMetadata({ articleFontSize: Math.min(28, metadata.articleFontSize + 1) })} aria-label="Increase text size">A+</button></div></div>
+          : <div className="zoom-row"><span>Page size</span><div><button onClick={() => setZoom((value) => Math.max(.75, value - .15))} aria-label="Zoom out">−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((value) => Math.min(2.5, value + .15))} aria-label="Zoom in">+</button></div></div>}
       </aside>}
 
       {searchOpen && <aside className="reader-panel search-panel" data-reader-control aria-label="Search PDF">

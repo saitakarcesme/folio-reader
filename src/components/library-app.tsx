@@ -101,7 +101,7 @@ export function LibraryApp() {
           id: crypto.randomUUID(), name: nameFromFile(file.name), originalFileName: file.name,
           pageCount: pdf.numPages, fileSize: file.size, createdAt: now, updatedAt: now,
           lastOpenedAt: null, currentPage: 1, pageOffset: 0, progress: 0, bookmarks: [],
-          readerMode: "continuous", readerTheme: "system", brightness: 1, coverBlob,
+          readerMode: "article", readerTheme: "system", brightness: 1, articleFontSize: 19, coverBlob,
         };
         await libraryRepository.add({ metadata, file });
       } catch (cause) {
