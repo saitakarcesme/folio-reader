@@ -8,6 +8,7 @@ import { Icon } from "@/components/icons";
 import { PdfPage } from "@/components/pdf-page";
 import { libraryRepository } from "@/lib/indexeddb-library";
 import { openPdf } from "@/lib/pdf";
+import { extractArticlePage } from "@/lib/pdf-text";
 import type { DocumentMetadata, ReaderMode, ReaderTheme } from "@/types/library";
 
 interface SearchResult { page: number; excerpt: string; }
@@ -216,11 +217,10 @@ export function ReaderClient({ id }: { id: string }) {
     const run = ++searchRun.current; setSearching(true); setSearchProgress(0); setSearchResults([]);
     const needle = query.trim().toLocaleLowerCase(); const matches: SearchResult[] = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber); const content = await page.getTextContent();
-      const text = content.items.map((item) => "str" in item ? item.str : "").join(" ").replace(/\s+/g, " ");
+      const { plainText: text } = await extractArticlePage(pdf, pageNumber);
       const index = text.toLocaleLowerCase().indexOf(needle);
       if (index >= 0) matches.push({ page: pageNumber, excerpt: text.slice(Math.max(0, index - 46), Math.min(text.length, index + needle.length + 72)) });
-      page.cleanup(); if (run !== searchRun.current) return;
+      if (run !== searchRun.current) return;
       if (pageNumber % 4 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
       setSearchProgress(pageNumber / pdf.numPages);
     }

@@ -1,4 +1,4 @@
-const CACHE = "folio-shell-v2";
+const CACHE = "folio-shell-v3";
 const SHELL = ["/", "/reader/offline", "/offline.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -30,7 +30,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/pdfjs/")) {
     event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
       if (response.ok) void caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
       return response;

@@ -156,6 +156,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid #3678f5; outline-
 .article-page .article-list-item { position: relative; padding-left: 1.3em; }
 .article-page .article-list-item::before { content: ""; position: absolute; top: .76em; left: .2em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .65; }
 .article-note { padding: 18px 0; opacity: .58; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; font-size: 14px !important; line-height: 1.5 !important; }
+.article-page-unavailable { min-height: min(62dvh, 620px); }
+.article-unavailable { min-height: 42dvh; display: grid; align-content: center; justify-items: start; gap: 10px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; }
+.article-unavailable p { margin: 0; opacity: .68; font-family: inherit; font-size: 15px; font-weight: 640; line-height: 1.45; }
+.article-unavailable span { max-width: 34ch; opacity: .48; font-size: 12px; line-height: 1.45; }
+.article-unavailable button { min-height: 36px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--reader-text) 20%, transparent); border-radius: 8px; font-size: 13px; font-weight: 650; }
 .article-loading { height: min(64dvh, 620px); display: grid; place-items: center; opacity: .45; }
 .article-loading .spinner { width: 20px; height: 20px; }
 .article-page-number { position: absolute; right: 0; bottom: 20px; opacity: .38; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; font-size: 11px; font-variant-numeric: tabular-nums; }

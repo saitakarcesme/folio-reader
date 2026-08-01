@@ -1,4 +1,4 @@
-import type { PDFPageProxy } from "pdfjs-dist";
+import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 
 export type ArticleBlockType = "heading" | "paragraph" | "list-item";
 
@@ -6,6 +6,18 @@ export interface ArticleBlock {
   type: ArticleBlockType;
   text: string;
 }
+
+interface ExtractedArticlePage {
+  blocks: ArticleBlock[];
+  plainText: string;
+}
+
+interface DocumentExtractionState {
+  cache: Map<number, Promise<ExtractedArticlePage>>;
+  tail: Promise<void>;
+}
+
+const extractionStates = new WeakMap<PDFDocumentProxy, DocumentExtractionState>();
 
 interface PositionedText {
   text: string;
@@ -98,7 +110,7 @@ function joinParagraph(previous: string, next: string) {
   return `${previous} ${next}`;
 }
 
-export async function extractArticleBlocks(page: PDFPageProxy): Promise<ArticleBlock[]> {
+async function extractArticleBlocks(page: PDFPageProxy): Promise<ExtractedArticlePage> {
   const [content, viewport] = await Promise.all([
     page.getTextContent({ includeMarkedContent: false }),
     Promise.resolve(page.getViewport({ scale: 1 })),
@@ -124,7 +136,8 @@ export async function extractArticleBlocks(page: PDFPageProxy): Promise<ArticleB
     const isPageEdge = line.y < viewport.height * 0.08 || line.y > viewport.height * 0.94;
     return !(isBarePageNumber && isPageEdge);
   });
-  if (!lines.length) return [];
+  const plainText = items.map((item) => item.text).join(" ").replace(/\s+/g, " ").trim();
+  if (!lines.length) return { blocks: [], plainText };
 
   const bodySize = median(lines.filter((line) => line.text.length > 24).map((line) => line.fontSize))
     || median(lines.map((line) => line.fontSize))
@@ -174,5 +187,60 @@ export async function extractArticleBlocks(page: PDFPageProxy): Promise<ArticleB
     }
   }
   flushParagraph();
-  return blocks;
+  return { blocks, plainText };
+}
+
+function stateFor(document: PDFDocumentProxy) {
+  let state = extractionStates.get(document);
+  if (!state) {
+    state = { cache: new Map(), tail: Promise.resolve() };
+    extractionStates.set(document, state);
+  }
+  return state;
+}
+
+async function serialize<T>(state: DocumentExtractionState, task: () => Promise<T>) {
+  const previous = state.tail;
+  let release: () => void = () => {};
+  state.tail = new Promise<void>((resolve) => { release = resolve; });
+  await previous.catch(() => undefined);
+  try {
+    return await task();
+  } finally {
+    release();
+  }
+}
+
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function extractWithRetry(document: PDFDocumentProxy, pageNumber: number) {
+  let lastError: unknown = new Error("PDF text extraction failed");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let page: PDFPageProxy | null = null;
+    try {
+      page = await document.getPage(pageNumber);
+      return await extractArticleBlocks(page);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await wait(160 * (attempt + 1));
+    } finally {
+      page?.cleanup();
+    }
+  }
+  throw lastError;
+}
+
+export function extractArticlePage(document: PDFDocumentProxy, pageNumber: number) {
+  const state = stateFor(document);
+  const cached = state.cache.get(pageNumber);
+  if (cached) return cached;
+
+  const extraction = serialize(state, () => extractWithRetry(document, pageNumber));
+  state.cache.set(pageNumber, extraction);
+  void extraction.catch(() => {
+    if (state.cache.get(pageNumber) === extraction) state.cache.delete(pageNumber);
+  });
+  return extraction;
 }

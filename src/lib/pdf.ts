@@ -17,7 +17,13 @@ async function pdfJs() {
 export async function openPdf(blob: Blob): Promise<PDFDocumentProxy> {
   const pdfModule = await pdfJs();
   const data = await blob.arrayBuffer();
-  return pdfModule.getDocument({ data }).promise;
+  return pdfModule.getDocument({
+    data,
+    cMapUrl: "/pdfjs/cmaps/",
+    cMapPacked: true,
+    standardFontDataUrl: "/pdfjs/standard_fonts/",
+    wasmUrl: "/pdfjs/wasm/",
+  }).promise;
 }
 
 export async function createPdfCover(document: PDFDocumentProxy) {
