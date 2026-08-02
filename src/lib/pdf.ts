@@ -3,10 +3,14 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 let configured = false;
 
 async function pdfJs() {
-  const pdfModule = await import("pdfjs-dist");
+  // PDF.js' standard build targets the newest JavaScript runtimes and relies
+  // on APIs that are still missing from some supported iPhone Safari versions
+  // (for example Map#getOrInsertComputed and Promise.try). The legacy build is
+  // the same renderer with the compatibility shims required by those devices.
+  const pdfModule = await import("pdfjs-dist/legacy/build/pdf.mjs");
   if (!configured) {
     pdfModule.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.mjs",
+      "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
       import.meta.url,
     ).toString();
     configured = true;

@@ -141,7 +141,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid #3678f5; outline-
 .reader-shell.theme-dark { --reader-bg: #11110f; --reader-ui: rgba(29,29,27,.94); --reader-text: #f2f2ed; }
 .reader-shell.article-reader.theme-system, .reader-shell.article-reader.theme-light { --reader-bg: #fbfbf8; }
 .reader-shell.article-reader.theme-sepia { --reader-bg: #f2ead7; }
-@media (prefers-color-scheme: dark) { .reader-shell.theme-system { --reader-bg: #11110f; --reader-ui: rgba(29,29,27,.94); --reader-text: #f2f2ed; } }
+@media (prefers-color-scheme: dark) {
+  .reader-shell.theme-system,
+  .reader-shell.article-reader.theme-system {
+    --reader-bg: #11110f;
+    --reader-ui: rgba(29,29,27,.94);
+    --reader-text: #f2f2ed;
+  }
+}
 .reader-viewport { width: 100%; height: 100dvh; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; scrollbar-width: none; }
 .reader-viewport::-webkit-scrollbar { display: none; }
 .page-list { min-height: 100%; }

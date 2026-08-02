@@ -260,7 +260,7 @@ export function ReaderClient({ id }: { id: string }) {
         </div>
       </footer>
 
-      {settingsOpen && <aside className="reader-panel settings-panel" data-reader-control aria-label="Reading settings">
+      {settingsOpen && <aside className="reader-panel settings-panel" data-reader-control aria-label="Reading settings" onPointerDown={revealControls}>
         <div className="panel-handle" /><div className="panel-heading"><strong>Display</strong><button onClick={() => setSettingsOpen(false)} aria-label="Close"><Icon name="x" /></button></div>
         <label className="brightness-control"><span><Icon name="sun" /> Brightness</span><input type="range" min="0.65" max="1.15" step="0.05" value={metadata.brightness} onChange={(event) => updateMetadata({ brightness: Number(event.target.value) })} /></label>
         <div className="setting-group"><span>Appearance</span><div className="segmented themes">{themes.map((theme) => <button key={theme.value} className={metadata.readerTheme === theme.value ? "selected" : ""} onClick={() => updateMetadata({ readerTheme: theme.value })}>{metadata.readerTheme === theme.value && <Icon name="check" />}{theme.label}</button>)}</div></div>
@@ -270,7 +270,7 @@ export function ReaderClient({ id }: { id: string }) {
           : <div className="zoom-row"><span>Page size</span><div><button onClick={() => setZoom((value) => Math.max(.75, value - .15))} aria-label="Zoom out">−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((value) => Math.min(2.5, value + .15))} aria-label="Zoom in">+</button></div></div>}
       </aside>}
 
-      {searchOpen && <aside className="reader-panel search-panel" data-reader-control aria-label="Search PDF">
+      {searchOpen && <aside className="reader-panel search-panel" data-reader-control aria-label="Search PDF" onPointerDown={revealControls}>
         <div className="panel-handle" /><form onSubmit={runSearch}><Icon name="search" /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search this PDF" aria-label="Search this PDF" /><button type="button" onClick={() => { searchRun.current += 1; setSearchOpen(false); }} aria-label="Close"><Icon name="x" /></button></form>
         {searching && <div className="search-status"><span>Searching…</span><ProgressBar value={searchProgress} /></div>}
         {!searching && query && <div className="search-summary">{searchResults.length} {searchResults.length === 1 ? "page" : "pages"} found</div>}
