@@ -162,6 +162,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid #3678f5; outline-
 .article-page p { margin: 0 0 1.08em; font-size: var(--article-font-size); line-height: 1.7; letter-spacing: -.006em; overflow-wrap: anywhere; }
 .article-page .article-list-item { position: relative; padding-left: 1.3em; }
 .article-page .article-list-item::before { content: ""; position: absolute; top: .76em; left: .2em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .65; }
+.article-page .article-quote { margin: 1.45em 0 1.55em; padding: .08em 0 .08em 1em; border-left: 2px solid color-mix(in srgb, var(--reader-text) 22%, transparent); font-size: var(--article-font-size); font-style: italic; line-height: 1.65; letter-spacing: -.008em; }
 .article-note { padding: 18px 0; opacity: .58; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; font-size: 14px !important; line-height: 1.5 !important; }
 .article-page-unavailable { min-height: min(62dvh, 620px); }
 .article-unavailable { min-height: 42dvh; display: grid; align-content: center; justify-items: start; gap: 10px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; }

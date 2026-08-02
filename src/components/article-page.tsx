@@ -68,6 +68,7 @@ export const ArticlePage = memo(function ArticlePage({ document, pageNumber, doc
       {blocks?.map((block, index) => {
         if (block.type === "heading") return <h3 key={index}>{block.text}</h3>;
         if (block.type === "list-item") return <p className="article-list-item" key={index}>{block.text}</p>;
+        if (block.type === "quote") return <blockquote className="article-quote" key={index}>{block.text}</blockquote>;
         return <p key={index}>{block.text}</p>;
       })}
       <footer className="article-page-number" aria-hidden="true">{pageNumber}</footer>

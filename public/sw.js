@@ -1,4 +1,4 @@
-const CACHE = "folio-shell-v5";
+const CACHE = "folio-shell-v6";
 const SHELL = ["/", "/reader/offline", "/offline.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
